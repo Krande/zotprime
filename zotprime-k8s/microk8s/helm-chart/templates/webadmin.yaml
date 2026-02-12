@@ -70,9 +70,12 @@ metadata:
   {{- include "zotprime-k8s.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.tls.enabled }}
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: letsencrypt
     {{- end }}
 spec:
+  {{- if .Values.ingressClassName }}
+  ingressClassName: {{ .Values.ingressClassName }}
+  {{- end }}
   {{- if .Values.tls.enabled }}
   tls:
   - hosts:

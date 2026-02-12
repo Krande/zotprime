@@ -1,5 +1,6 @@
 tls:
   enabled: false  # Set to true for HTTPS with cert-manager
+ingressClassName: ""
 ingressHostnames:
   api: yoursub1.yourdomain.tld
   streamserver: yoursub5.yourdomain.tld
