@@ -5,48 +5,45 @@ ingressHostnames:
   api: yoursub1.yourdomain.tld
   streamserver: yoursub5.yourdomain.tld
   minios3Data: yoursub2.yourdomain.tld
-  phpmyadmin: yoursub3.yourdomain.tld
-  minios3Web: yoursub4.yourdomain.tld
   admin: yoursub6.yourdomain.tld
   portal: yoursub7.yourdomain.tld
-basicAuth:
-  # HTTP Basic Authentication at ingress level (network edge protection)
-  # Generate: htpasswd -nb username password | base64
-  # Format: username:$hashed_password (both in one base64-encoded string)
-  enabled: true
-  htpasswd: ""
 authSecret:
   # Base64 encoded values
   # Generate: echo -n "your_value" | base64
   authSalt: ""  # openssl rand -hex 16 | base64
+  apiSuperToken: ""  # openssl rand -hex 32 | base64
   apiSuperTokenHash: ""  # php -r "echo password_hash('YOUR_TOKEN', PASSWORD_BCRYPT);" | base64  -w 0
   appKey: ""  # php -r "echo 'base64:' . base64_encode(random_bytes(32)) . PHP_EOL;" # echo -n "base64:YOUR_KEY" | base64
 webAdminConfig:
   # Web Admin UI credentials (matches WEBADMIN_* in .env)
   username: ""  # plain text
-  password: ""  # base64: echo -n "admin" | base64
+webAdminSecret:
+  password: ""  # base64 encoded bcrypt hash: echo -n "$(php -r 'echo password_hash(\"your_password\", PASSWORD_BCRYPT);')" | base64
+webPortalSecret:
+  # Generate: openssl rand -hex 32 (plaintext, helm template will base64 encode it)
+  sessionSecret: ""
 minioConfig:
-  minioRootUser: zotero # MINIOROOTUSER
+  minioRootUser: "zotero" # MINIOROOTUSER
 minioSecret:
-  secretTxt: "TUlOSU9fUk9PVF9QQVNTV09SRD16b3Rlcm9kb2NrZXIK"  # base64 of "MINIO_ROOT_PASSWORD=zoterodocker"  # echo -n "MINIO_ROOT_PASSWORD=zoterodocker" | base64
+  secretTxt: ""  # base64 of "MINIO_ROOT_PASSWORD=zoterodocker"  # echo -n "MINIO_ROOT_PASSWORD=zoterodocker" | base64
 blobSecret:
   # Blob storage credentials (for dataserver to connect to object storage)
   # When using MinIO: awsAccessKeyId=MINIOROOTUSER, awsSecretAccessKey=MINIOROOTPASSWORD
   # When using cloud blob storage: use your cloud provider's access key and secret
-  awsAccessKeyId: "em90ZXJv"  # base64 of "zotero"
-  awsSecretAccessKey: "em90ZXJvZG9ja2Vy"  # base64 of "zoterodocker"
+  awsAccessKeyId: ""  # base64 of "zotero"
+  awsSecretAccessKey: ""  # base64 of "zoterodocker"
 dbConfig:
-  mariadbDatabasename: zoterotest
-  mariadbUser: zotprimeprod
+  mariadbDatabasename: "zoterotest"
+  mariadbUser: "zotprimeprod"
 dbSecret:
-  mysqlRootPassword: "em90ZXJv"  # base64 of "zotero" (no newline)
-  mysqlPassword: "em90ZXJvdGVzdA=="  # base64 of "zoterotest" (no newline)
+  mariadbRootPassword: ""  # base64 of "zotero" (no newline)
+  mariadbPassword: ""  # base64 of "zoterotest" (no newline)
 zoteroConfig:
   # Zotero API admin credentials (matches ADMIN_* in .env)
-  adminUsername: admin
-  adminEmail: admin@zotero.org
+  adminUsername: "admin"
+  adminEmail: "admin@zotero.org"
 zoteroSecret:
-  adminPassword: "YWRtaW4="  # base64 of "admin"
+  adminPassword: ""  # base64 of "admin"
 dataserver:
   ports:
   - name: dataserver-api
@@ -66,10 +63,6 @@ webAdmin:
     requests:
       cpu: "0.5"
       memory: 256Mi
-  # Generate: echo -n "your_username" | base64
-  username: ""
-  # Generate: php -r "echo password_hash('your_password', PASSWORD_BCRYPT, ['cost' => 12]);" | base64 -w 0
-  password: ""
   service:
     port: 80
     targetPort: 8080
@@ -86,8 +79,6 @@ webPortal:
     requests:
       cpu: "0.5"
       memory: 256Mi
-  # Generate: openssl rand -hex 32 | base64 -w 0
-  sessionSecret: ""
   service:
     port: 80
     targetPort: 3000
@@ -114,7 +105,7 @@ dataserverConfig:
     echo "ZotPrime Init Starting..."
     
     echo "Waiting for MariaDB..."
-    until mariadb -h mysql -u root -p${MYSQLROOTPASSWORD} -e "SELECT 1" >/dev/null 2>&1; do
+    until mariadb -h mariadb -u root -p${MARIADB_ROOT_PASSWORD} -e "SELECT 1" >/dev/null 2>&1; do
         sleep 2
     done
     echo "MariaDB ready"
@@ -131,14 +122,13 @@ dataserverConfig:
     done
     echo "LocalStack ready"
     
-    if mariadb -h mysql -u root -p${MYSQLROOTPASSWORD} -e "USE zotero_master; SHOW TABLES;" 2>/dev/null | grep -q "users"; then
+    if mariadb -h mariadb -u root -p${MARIADB_ROOT_PASSWORD} -e "USE zotero_master; SHOW TABLES;" 2>/dev/null | grep -q "users"; then
         echo "Database already initialized, skipping..."
     else
         echo "Initializing database..."
-        cd /var/www/zotero/misc && ./init-mysql.sh
+        cd /var/www/zotero/misc && ./init-database.sh
         # cd /var/www/zotero/misc && ./db_update.sh  # Obsolete: master.sql already has hasData column
     fi
-    
     echo "Updating database schema..."
     cd /var/www/zotero/admin && php schema_update
     
@@ -176,7 +166,6 @@ memcached:
     targetPort: 11211
   type: ClusterIP
 minio:
-  # clusterIP: 10.152.183.11
   ports:
   - name: minio-ui
     port: 9001
@@ -187,8 +176,10 @@ minio:
   - name: minio-data2
     port: 80
     targetPort: 9000
-  type: ClusterIP
-mysql:
+  type: LoadBalancer
+  loadBalancerIP: 10.7.7.11  # Change to LoadBalancer for VPN-only access with loadBalancerIP: 10.7.7.11
+  # loadBalancerIP: 10.7.7.11  # Uncomment for VPN-only MinIO web UI access (requires MetalLB VPN pool)
+mariadb:
   ports:
   - name: mariadb
     port: 3306
@@ -199,11 +190,28 @@ phpmyadmin:
   - name: phpmyadmin
     port: 80
     targetPort: 80
-  type: ClusterIP
+  type: LoadBalancer
+  loadBalancerIP: 10.7.7.10
 pvc:
   dataminio:
     storageClass: nfs
     storageRequest: 10Gi
+    keepOnUninstall: true
+  webadminDb:
+    storageClass: nfs
+    storageRequest: 500Mi
+    keepOnUninstall: true
+  datadb:
+    storageClass: nfs
+    storageRequest: 2Gi
+    keepOnUninstall: true
+  dataredis:
+    storageClass: nfs
+    storageRequest: 1Gi
+  portalData:
+    storageClass: nfs
+    storageRequest: 1Gi
+    keepOnUninstall: true
 redis:
   ports:
   - name: redis
@@ -271,10 +279,6 @@ zotprimeDb:
     image:
       repository: alpine
       tag: "3"
-  volumeClaims:
-    datadb:
-      requests:
-        storage: 2Gi
 zotprimeElasticsearch:
   elasticsearch:
     env:
@@ -336,6 +340,8 @@ zotprimeMemcached:
         memory: 1536Mi
   replicas: 1
 zotprimeMinio:
+  enabled: true
+  exposeWebUI: true  # Set to false to disable MinIO web console access
   replicas: 1
   zotprimeMinio:
     args:
@@ -362,9 +368,10 @@ zotprimeMinio:
         cpu: 200m
         memory: 256Mi
 zotprimePhpmyadmin:
+  enabled: true
   phpmyadmin:
     env:
-      pmaHost: mysql
+      pmaHost: mariadb
       pmaPort: "3306"
     image:
       repository: localhost:32000/zotprime-k8s/zotprime-phpmyadmin
@@ -391,10 +398,6 @@ zotprimeRedis:
         cpu: 100m
         memory: 100Mi
   replicas: 1
-  volumeClaims:
-    dataredis:
-      requests:
-        storage: 1Gi
 zotprimeStreamserver:
   replicas: 1
   zotprimeStreamserver:

@@ -23,6 +23,8 @@ spec:
         ports:
         - containerPort: {{ .Values.webAdmin.service.targetPort }}
         env:
+        - name: APP_URL
+          value: "https://{{ .Values.ingressHostnames.admin }}"
         - name: APP_KEY
           valueFrom:
             secretKeyRef:
@@ -42,9 +44,16 @@ spec:
           valueFrom:
             secretKeyRef:
               name: {{ include "zotprime-k8s.fullname" . }}-auth-secret
-              key: api-super-token-hash
+              key: api-super-token
+        volumeMounts:
+        - mountPath: /var/lib/admin-data/sqlite
+          name: webadmin-db
         resources:
           {{- toYaml .Values.webAdmin.resources | nindent 10 }}
+      volumes:
+      - name: webadmin-db
+        persistentVolumeClaim:
+          claimName: {{ include "zotprime-k8s.fullname" . }}-webadmin-db
 ---
 apiVersion: v1
 kind: Service
@@ -68,10 +77,6 @@ metadata:
   labels:
     app: zotprime-admin
   {{- include "zotprime-k8s.labels" . | nindent 4 }}
-  annotations:
-    {{- if .Values.tls.enabled }}
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    {{- end }}
 spec:
   {{- if .Values.tls.enabled }}
   tls:

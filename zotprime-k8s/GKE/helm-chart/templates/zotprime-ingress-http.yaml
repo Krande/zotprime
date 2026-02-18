@@ -12,47 +12,16 @@ metadata:
     networking.gke.io/managed-certificates: {{ include "zotprime-k8s.fullname" . }}-cert
     {{- end }}
     nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
 spec:
   {{- if .Values.tls.enabled }}
   tls:
   - secretName: {{ include "zotprime-k8s.fullname" . }}-tls
     hosts:
-    - {{ .Values.ingressHostnames.minios3Web }}
     - {{ .Values.ingressHostnames.minios3Data }}
-    - {{ .Values.ingressHostnames.phpmyadmin }}
     - {{ .Values.ingressHostnames.api }}
   {{- end }}
   rules:
-  - host: {{ .Values.ingressHostnames.minios3Web }}
-    http:
-      paths:
-      - backend:
-          service:
-            name: minio
-            port:
-              name: minio-ui
-        path: /
-        pathType: Prefix
-  - host: {{ .Values.ingressHostnames.minios3Data }}
-    http:
-      paths:
-      - backend:
-          service:
-            name: minio
-            port:
-              name: minio-data
-        path: /
-        pathType: Prefix
-  - host: {{ .Values.ingressHostnames.phpmyadmin }}
-    http:
-      paths:
-      - backend:
-          service:
-            name: phpmyadmin
-            port:
-              number: 80
-        path: /
-        pathType: Prefix
   - host: {{ .Values.ingressHostnames.api }}
     http:
       paths:

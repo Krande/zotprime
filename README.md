@@ -1,8 +1,8 @@
-# ZotPrime V2
+# ZotPrime2
 
-**On-premise Zotero Platform**
+**Self-hosted platform for Zotero**
 
-ZotPrime is a fully packaged repository aimed to make on-premise [Zotero](https://www.zotero.org) deployment easier with the last versions of both Zotero client and server. This is the result of sleepless nights spent to deploy Zotero within my organization on a disconnected network. 
+ZotPrime2 is a fully packaged repository aimed to make self-hosted [Zotero](https://www.zotero.org) deployment easier with the last versions of both Zotero client and server. This is the result of sleepless nights spent to deploy Zotero within my organization on a disconnected network. 
 
 Feel free to open issues or pull requests if you did not manage to use it.
 
@@ -49,6 +49,12 @@ sudo apt update
 sudo apt install docker-compose-plugin
 ```
 
+Install required tools for secret generation:
+
+```bash
+sudo apt install openssl php-cli
+```
+
 ### 3. Clone Repository
 
 ```bash
@@ -82,7 +88,7 @@ The system will automatically initialize databases and services on first startup
 All credentials are configured in the `.env` file:
 - **Zotero API**: `ADMIN_USERNAME` / `ADMIN_PASSWORD`
 - **S3 Web UI**: `MINIOROOTUSER` / `MINIOROOTPASSWORD`
-- **PHPMyAdmin**: `root` / `MYSQLROOTPASSWORD`
+- **PHPMyAdmin**: `root` / `MARIADB_ROOT_PASSWORD`
 
 ---
 
@@ -195,16 +201,20 @@ Check the `ADDRESS` column and setup A records in your DNS hosting.
 |---------|-----|
 | Zotero API | `http://yoursub1.yourdomain.tld` |
 | S3 | `http://yoursub2.yourdomain.tld` |
-| PHPMyAdmin | `http://yoursub3.yourdomain.tld` |
-| S3 Web UI | `http://yoursub4.yourdomain.tld` |
 | Stream Server | `ws://yoursub5.yourdomain.tld` |
+| Web Admin | `http://yoursub6.yourdomain.tld` |
+| Web Portal | `http://yoursub7.yourdomain.tld` |
+
+**Admin Services (VPN-only):**
+- PHPMyAdmin: `http://10.7.7.10`
+- MinIO Web UI: `http://10.7.7.11`
 
 ### Default Credentials
 
 Credentials are configured in the `.env` file:
 - **Zotero API**: `ADMIN_USERNAME` / `ADMIN_PASSWORD`
 - **S3 Web UI**: `MINIOROOTUSER` / `MINIOROOTPASSWORD`
-- **PHPMyAdmin**: `root` / `MYSQLROOTPASSWORD`
+- **PHPMyAdmin**: `root` / `MARIADB_ROOT_PASSWORD`
 
 ---
 

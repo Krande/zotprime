@@ -1,3 +1,4 @@
+{{- if .Values.zotprimePhpmyadmin.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -9,7 +10,11 @@ metadata:
     cloud.google.com/neg: '{"ingress": true}'
 spec:
   type: {{ .Values.phpmyadmin.type }}
+  {{- if .Values.phpmyadmin.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.phpmyadmin.loadBalancerIP }}
+  {{- end }}
   selector:
     apps: zotprime-phpmyadmin
   ports:
 	{{- .Values.phpmyadmin.ports | toYaml | nindent 2 -}}
+{{- end }}

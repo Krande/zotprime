@@ -23,10 +23,50 @@ kubectl apply -f clusterissuer.yaml
 
 ```bash
 cd zotprime-k8s/microk8s/helm-chart
+```
+
+### 2. Generate Secrets
+
+**Automated (Recommended):**
+
+Linux/Mac:
+```bash
+cd ../scripts
+./generate-secrets.py
+```
+
+Windows (WSL):
+```bash
+cd ../scripts
+wsl ./generate-secrets.py
+```
+
+Requires: `python3-yaml` package
+```bash
+sudo apt install python3-yaml
+```
+
+**Manual:**
+
+Copy template and edit all empty `""` fields:
+```bash
 cp values-example.yaml values.yaml
 ```
 
-### 2. Configure TLS
+Populate in `values.yaml`:
+- `authSecret` (authSalt, apiSuperToken, apiSuperTokenHash, appKey)
+- `webAdminConfig` (username)
+- `webAdminSecret` (password)
+- `minioSecret` (secretTxt)
+- `blobSecret` (awsAccessKeyId, awsSecretAccessKey)
+- `dbSecret` (mariadbRootPassword, mariadbPassword)
+- `zoteroSecret` (adminPassword)
+- `webPortalSecret` (sessionSecret)
+- `basicAuth` (htpasswd, if enabled)
+
+See `values-example.yaml` comments for generation commands.
+
+### 3. Configure TLS
 
 Edit `values.yaml`:
 
@@ -34,100 +74,6 @@ Edit `values.yaml`:
 tls:
   enabled: false  # Set true for HTTPS
 ```
-
-### 3. Configure Credentials
-
-Generate auth secrets:
-
-```bash
-# Auth salt
-openssl rand -hex 16 | base64
-
-# API super token hash
-php -r "echo password_hash('YOUR_TOKEN', PASSWORD_BCRYPT);" | base64
-```
-
-Generate base64-encoded secrets:
-
-**Linux/Mac:**
-```bash
-echo "MINIO_ROOT_PASSWORD=your_password" | base64
-printf "MARIADB_ROOT_PASSWORD=root_pass\nMARIADB_PASSWORD=user_pass" | base64
-```
-
-**Windows PowerShell:**
-```powershell
-[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("MINIO_ROOT_PASSWORD=your_password"))
-[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("MARIADB_ROOT_PASSWORD=root_pass`nMARIADB_PASSWORD=user_pass"))
-```
-
-Edit `values.yaml`:
-
-```yaml
-authSecret:
-  authSalt: "<base64_output>"
-  apiSuperTokenHash: "<base64_output>"
-
-minioSecret:
-  minioRootPassword: "<base64_password>"
-
-dbSecret:
-  mysqlRootPassword: "<base64_password>"
-  mysqlPassword: "<base64_password>"
-
-dbConfig:
-  mariadbUser: your_db_user
-  mariadbDatabasename: your_db_name
-
-zoteroAdmin:
-  adminUsername: admin
-  adminPassword: admin
-  adminEmail: admin@example.com
-```
-
-### 3a. Configure Basic Auth
-
-Protect PHPMyAdmin and MinIO web console with HTTP Basic Authentication. This adds a second layer of security at the ingress level before reaching the application's own authentication.
-
-**Install htpasswd:**
-
-Linux:
-```bash
-sudo apt install apache2-utils
-```
-
-Mac:
-```bash
-brew install httpd
-```
-
-Windows (WSL):
-```bash
-wsl --install
-wsl sudo apt install apache2-utils
-```
-
-**Generate password hash:**
-
-Linux/Mac:
-```bash
-htpasswd -nb admin yourpassword | base64
-```
-
-Windows (WSL):
-```bash
-wsl htpasswd -nb admin yourpassword | base64
-```
-
-**Edit `values.yaml`:**
-
-```yaml
-basicAuth:
-  enabled: true
-  htpasswd: "<base64_output>"
-```
-
-Users will authenticate twice: first at ingress (basic auth), then at application login (PHPMyAdmin/MinIO credentials).
 
 ### 4. Configure Domains
 
@@ -138,13 +84,13 @@ ingressHostnames:
   api: yoursub1.yourdomain.tld
   streamserver: yoursub5.yourdomain.tld
   minios3Data: yoursub2.yourdomain.tld
-  phpmyadmin: yoursub3.yourdomain.tld
-  minios3Web: yoursub4.yourdomain.tld
+  admin: yoursub6.yourdomain.tld
+  portal: yoursub7.yourdomain.tld
 ```
 
 ## DNS
 
-Point all 5 subdomains to ingress IP:
+Point all subdomains to ingress IP:
 
 ```bash
 kubectl get ingress -n zotprime  # Get IP after deployment
@@ -166,8 +112,48 @@ kubectl get pods -n zotprime         # All should be Running
 
 ## Update
 
+### Pull Latest Code
+
 ```bash
-helm upgrade zotprime-k8s helm-chart --namespace zotprime
+cd /path/to/zotprime
+git pull origin main
+```
+
+### Rebuild Images
+
+```bash
+cd zotprime-k8s/microk8s/scripts
+./buildimages.sh
+./pushimages.sh
+```
+
+### Update Deployment
+
+**Compatible changes (no config changes needed):**
+
+```bash
+cd ../helm-chart
+helm upgrade zotprime-k8s . --namespace zotprime
+kubectl rollout restart deployment -n zotprime
+kubectl rollout restart statefulset -n zotprime
+```
+
+**Non-compatible changes (config changes required):**
+
+1. Edit `values.yaml` with new configuration
+2. Run upgrade:
+
+```bash
+helm upgrade zotprime-k8s . --namespace zotprime
+kubectl rollout restart deployment -n zotprime
+kubectl rollout restart statefulset -n zotprime
+```
+
+### Verify Update
+
+```bash
+kubectl get pods -n zotprime
+kubectl logs -n zotprime deployment/dataserver
 ```
 
 ## Multiple Environments

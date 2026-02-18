@@ -40,7 +40,7 @@ class Z_CONFIG {
 	public static $AWS_REGION = 'us-east-1';
 	public static $AWS_ACCESS_KEY;
 	public static $AWS_SECRET_KEY;
-	public static $S3_ENDPOINT = '10.5.5.1:9000';
+	public static $S3_ENDPOINT = 'minio:9000';
 	public static $S3_PUBLIC_ENDPOINT = '';
 	public static $S3_BUCKET = 'zotero';
 	public static $S3_BUCKET_CACHE = '';
@@ -86,8 +86,8 @@ class Z_CONFIG {
 	public static $ATTACHMENT_SERVER_HOSTS = array("files1.localdomain", "files2.localdomain");
 	public static $ATTACHMENT_SERVER_DYNAMIC_PORT = 80;
 //	public static $ATTACHMENT_SERVER_STATIC_PORT = 81;
-	public static $ATTACHMENT_SERVER_URL = "https://files.example.net";
-	public static $ATTACHMENT_SERVER_DOCROOT = "/var/www/attachments/";
+//	public static $ATTACHMENT_SERVER_URL = "https://files.example.net";
+//	public static $ATTACHMENT_SERVER_DOCROOT = "/var/www/attachments/";
 	public static $ATTACHMENT_PROXY_URL = "https://files.example.com/";
 	public static $ATTACHMENT_PROXY_SECRET = "";
 
