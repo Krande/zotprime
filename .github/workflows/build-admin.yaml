@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'stack/admin/**'
+      - '.github/workflows/build-admin.yaml'
 
 jobs:
   build:
