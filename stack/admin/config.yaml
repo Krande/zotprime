@@ -27,7 +27,7 @@ redis:
 session:
   driver: redis
   lifetime: 30  # minutes
-  secure: false  # K8s Ingress handles HTTPS
+  secure: true
   same_site: strict
   encrypt: false
   path: /
